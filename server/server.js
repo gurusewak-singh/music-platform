@@ -6,6 +6,7 @@ const connectDB = require('./config/db'); // We'll create this next
 const authRoutes = require('./routes/authRoutes');
 const songRoutes = require('./routes/songRoutes'); // Import song routes
 const playlistRoutes = require('./routes/playlistRoutes'); // Import playlist routes
+const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
 
 // Load env vars
 dotenv.config();
@@ -29,7 +30,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes); // Mount auth routes under /api/auth
 app.use('/api/songs', songRoutes); // Mount song routes under /api/songs
 app.use('/api/playlists', playlistRoutes); // Mount playlist routes
-
+app.use('/api/admin', adminRoutes); // Mount admin routes
 // TODO: Define Routes (e.g., app.use('/api/auth', authRoutes);)
 
 const PORT = process.env.PORT || 5000;

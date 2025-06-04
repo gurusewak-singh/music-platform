@@ -1,6 +1,7 @@
 // server/routes/playlistRoutes.js
 const express = require('express');
 const {
+    searchPlaylists,
     createPlaylist,
     getMyPlaylists,
     getPlaylistById,
@@ -14,6 +15,9 @@ const { protect } = require('../middleware/authMiddleware');
 const { singleImageUpload } = require('../middleware/uploadMiddleware'); // For cover image
 
 const router = express.Router();
+
+router.get('/search', searchPlaylists); // GET /api/playlists/search?q=MySearchTerm
+router.get('/:id', getPlaylistById); // GET /api/playlists/:id (controller handles public/private logic)
 
 // All playlist routes require authentication
 router.use(protect);

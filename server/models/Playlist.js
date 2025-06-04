@@ -37,5 +37,5 @@ const playlistSchema = new mongoose.Schema({
         default: Date.now,
     },
 });
-
+playlistSchema.index({ name: 'text' });
 module.exports = mongoose.model('Playlist', playlistSchema);

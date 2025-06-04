@@ -296,3 +296,43 @@ exports.updatePlaylistCoverImage = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 };
+
+// @desc    Search public playlists by title
+// @route   GET /api/playlists/search
+// @access  Public
+exports.searchPlaylists = async (req, res) => {
+    const searchTerm = req.query.q || ''; // Expecting query param 'q' for search term
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const page = parseInt(req.query.page) || 1;
+
+    if (!searchTerm.trim()) {
+        return res.status(400).json({ success: false, message: 'Search term is required' });
+    }
+
+    try {
+        const query = {
+            isPublic: true, // Only search public playlists
+            $text: { $search: searchTerm }
+        };
+
+        const count = await Playlist.countDocuments(query);
+        const playlists = await Playlist.find(query)
+            .populate('owner', 'username') // Populate owner info
+            .populate('songs', 'title')    // Optionally populate a few song titles
+            .sort({ /* You can add sorting, e.g., by relevance or createdAt */ })
+            .limit(pageSize)
+            .skip(pageSize * (page - 1));
+
+        res.status(200).json({
+            success: true,
+            playlists,
+            page,
+            pages: Math.ceil(count / pageSize),
+            count
+        });
+
+    } catch (error) {
+        console.error('Search Playlists Error:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};

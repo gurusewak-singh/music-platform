@@ -59,6 +59,6 @@ const songSchema = new mongoose.Schema({
 });
 
 // Optional: Index for searching by title and artist
-songSchema.index({ title: 'text', artist: 'text' });
+songSchema.index({ title: 'text', artist: 'text', genre: 'text', album: 'text' });
 
 module.exports = mongoose.model('Song', songSchema);
