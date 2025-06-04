@@ -3,6 +3,9 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db'); // We'll create this next
+const authRoutes = require('./routes/authRoutes');
+const songRoutes = require('./routes/songRoutes'); // Import song routes
+const playlistRoutes = require('./routes/playlistRoutes'); // Import playlist routes
 
 // Load env vars
 dotenv.config();
@@ -21,6 +24,11 @@ app.use(express.urlencoded({ extended: false })); // To parse URL-encoded reques
 app.get('/', (req, res) => {
     res.send('API is running...');
 });
+
+// Mount Routers
+app.use('/api/auth', authRoutes); // Mount auth routes under /api/auth
+app.use('/api/songs', songRoutes); // Mount song routes under /api/songs
+app.use('/api/playlists', playlistRoutes); // Mount playlist routes
 
 // TODO: Define Routes (e.g., app.use('/api/auth', authRoutes);)
 
