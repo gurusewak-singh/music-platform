@@ -1,35 +1,22 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// client/src/App.js (or App.jsx)
+import React, { useContext } from 'react';
+import AppRouter from './routes/AppRouter';
+import { AuthContext } from './context/AuthContext'; // Import AuthContext
+import GlobalSpinner from './components/ui/GlobalSpinner'; // Import GlobalSpinner
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { isLoading: isAuthLoading } = useContext(AuthContext); // Get isLoading from AuthContext
+
+  // You might have other loading states from other contexts in the future.
+  // For now, we'll just use the auth loading state.
+  const showGlobalSpinner = isAuthLoading;
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+    <> {/* Use a Fragment to avoid an unnecessary div */}
+      <AppRouter />
+      <GlobalSpinner isLoading={showGlobalSpinner} /> {/* Render GlobalSpinner conditionally */}
     </>
-  )
+  );
 }
 
-export default App
+export default App;

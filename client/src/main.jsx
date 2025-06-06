@@ -1,10 +1,18 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+// client/src/index.js
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+import { AuthProvider } from './context/AuthContext';
+import { PlayerProvider } from './context/PlayerContext'; // Import PlayerProvider
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <AuthProvider>
+      <PlayerProvider> {/* Wrap with PlayerProvider */}
+        <App />
+      </PlayerProvider>
+    </AuthProvider>
+  </React.StrictMode>
+);
