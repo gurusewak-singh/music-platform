@@ -1,6 +1,8 @@
 // client/src/context/AuthContext.js
-import React, { createContext, useReducer, useEffect, useCallback } from 'react';
-import apiClient from '../services/api'; // Our configured Axios instance
+import React, { createContext, useReducer, useEffect, useCallback, useContext } from 'react';
+import apiClient from '../services/api';
+import { PlayerContext } from './PlayerContext'; // Import PlayerContext for logout
+import { notifySuccess, notifyError, notifyInfo } from '../utils/notifications';
 
 // Initial state
 const initialState = {
@@ -73,6 +75,7 @@ export const AuthContext = createContext(initialState);
 // Provider Component
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const playerContext = useContext(PlayerContext); // Access PlayerContext
 
   // Helper to set token in apiClient headers
   const setAuthToken = (token) => {
@@ -95,6 +98,7 @@ export const AuthProvider = ({ children }) => {
       } catch (err) {
         console.error('Load User Error:', err.response ? err.response.data : err.message);
         dispatch({ type: AUTH_ERROR, payload: err.response ? err.response.data.message : 'Token verification failed' });
+        notifyError(err.response?.data?.message || 'Session expired or invalid. Please log in again.');
       }
     } else {
       dispatch({ type: AUTH_ERROR }); // No token, not authenticated
@@ -115,12 +119,14 @@ export const AuthProvider = ({ children }) => {
         payload: res.data, // Should contain token and user object
       });
       setAuthToken(res.data.token); // Set token for future requests
+      notifySuccess("Logged in successfully!");
       // loadUser(); // Re-load user to ensure state consistency (optional, login_success already sets user)
     } catch (err) {
       dispatch({
         type: AUTH_ERROR,
         payload: err.response ? err.response.data.message : 'Login failed',
       });
+      notifyError(err.response?.data?.message || 'Login failed');
     }
   };
 
@@ -134,12 +140,14 @@ export const AuthProvider = ({ children }) => {
         payload: res.data,
       });
       setAuthToken(res.data.token);
+      notifySuccess("Registration successful! Welcome!");
       // loadUser();
     } catch (err) {
       dispatch({
         type: AUTH_ERROR,
         payload: err.response ? err.response.data.message : 'Registration failed',
       });
+      notifyError(err.response?.data?.message || 'Registration failed');
     }
   };
 
@@ -153,12 +161,14 @@ export const AuthProvider = ({ children }) => {
         payload: res.data,
       });
       setAuthToken(res.data.token);
+      notifySuccess("Artist registration submitted. Verification pending.");
       // loadUser();
     } catch (err) {
       dispatch({
         type: AUTH_ERROR,
         payload: err.response ? err.response.data.message : 'Artist registration failed',
       });
+      notifyError(err.response?.data?.message || 'Artist registration failed');
     }
   };
 
@@ -167,6 +177,10 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     dispatch({ type: LOGOUT });
     setAuthToken(null); // Remove token from apiClient headers
+    if (playerContext && typeof playerContext.clearQueue === 'function') {
+      playerContext.clearQueue(); // Clear the player queue on logout
+    }
+    notifyInfo("Logged out successfully.");
   };
 
   // Clear Errors Action

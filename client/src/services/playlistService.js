@@ -75,3 +75,29 @@ export const updatePlaylistCover = async (playlistId, coverImageData) => {
         throw error.response?.data || new Error('Failed to update playlist cover');
     }
 };
+export const searchPlaylists = async (query, page = 1, limit = 20) => {
+  try {
+    // Assuming backend endpoint is /api/playlists/search?q=term or /api/playlists?search=term
+    // Adjust the endpoint and query parameter name as per your backend.
+    const response = await apiClient.get('/playlists/search', { // Example endpoint
+      params: { q: query, page, limit },
+    });
+    return response.data; // Expects { success: true, playlists: [], page, pages, count }
+  } catch (error) {
+    console.error('Error searching playlists:', error.response?.data?.message || error.message);
+    throw error.response?.data || new Error('Failed to search playlists');
+  }
+};
+
+export const getUserPublicPlaylists = async (userId, page = 1, limit = 10) => {
+    try {
+        // Assumes backend endpoint GET /api/playlists/user/:userId
+        const response = await apiClient.get(`/playlists/user/${userId}`, {
+            params: { page, pageSize: limit } // Ensure backend uses pageSize or adjust
+        });
+        return response.data; // Expects { success: true, playlists: [], page, pages, count }
+    } catch (error) {
+        console.error(`Error fetching public playlists for user ${userId}:`, error.response?.data || error.message);
+        throw error.response?.data || new Error('Failed to fetch user public playlists');
+    }
+};

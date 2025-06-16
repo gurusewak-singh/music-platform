@@ -1,38 +1,56 @@
 // client/src/components/song/SongCard.jsx
 import React, { useContext, useState } from 'react';
 import { PlayerContext } from '../../context/PlayerContext';
-import AddToPlaylistModal from '../playlist/AddToPlaylistModal'; // Import modal
-import { AuthContext } from '../../context/AuthContext'; // To check if user is logged in
-import { FiPlayCircle, FiPauseCircle, FiPlusSquare, FiMoreHorizontal, FiMusic } from 'react-icons/fi';
+import AddToPlaylistModal from '../playlist/AddToPlaylistModal';
+import CreatePlaylistModal from '../playlist/CreatePlaylistModal';
+import { AuthContext } from '../../context/AuthContext';
+import AuthPromptModal from '../ui/AuthPromptModal'; // Import the modal
+import { FiPlayCircle, FiPauseCircle, FiPlusSquare, FiMusic } from 'react-icons/fi';
 
 const SongCard = ({ song, onPlay }) => {
-  const { currentSong, isPlaying, pause } = useContext(PlayerContext);
+  const { currentSong, isPlaying: playerIsPlaying, pause: playerPause } = useContext(PlayerContext);
   const { isAuthenticated } = useContext(AuthContext);
-  const [isAddToPlaylistModalOpen, setIsAddToPlaylistModalOpen] = useState(false); // State for modal visibility
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // State for auth modal
 
-  const isCurrentlyPlayingThisSong = currentSong?._id === song._id && isPlaying;
+  const [isAddToPlaylistModalOpen, setIsAddToPlaylistModalOpen] = useState(false);
+  const [isCreatePlaylistModalOpen, setIsCreatePlaylistModalOpen] = useState(false);
 
-  const handlePlayClick = () => {
+  const isCurrentlyPlayingThisSong = currentSong?._id === song._id && playerIsPlaying;
+
+  const handlePlayAttempt = () => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true); // Open the auth modal
+      return;
+    }
+    // Authenticated: proceed with original play logic
     if (isCurrentlyPlayingThisSong) {
-      pause();
+      playerPause();
     } else {
-      onPlay();
+      if (onPlay) onPlay();
     }
   };
 
-  const handleOpenAddToPlaylistModal = () => {
-    if (isAuthenticated) { // Double check user is authenticated before opening
-      setIsAddToPlaylistModalOpen(true);
-    } else {
-      // Optionally, navigate to login or show a message
-      alert("Please log in to add songs to a playlist.");
+  const handleOpenAddToPlaylistModalAttempt = () => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true); // Open the auth modal for this action too
+      return;
     }
+    // Authenticated: proceed to open the actual AddToPlaylistModal
+    setIsAddToPlaylistModalOpen(true);
   };
 
-  const handleSongAddedToPlaylist = (playlistId, addedSong) => {
-    // Optionally show a success notification here (e.g., using a toast library)
-    console.log(`Song "${addedSong.title}" added to playlist ID ${playlistId}`);
-    // You might want to refresh playlist data elsewhere if this affects other components immediately.
+  const openCreatePlaylistModalFromSongCard = () => {
+    setIsAddToPlaylistModalOpen(false);
+    setIsCreatePlaylistModalOpen(true);
+  };
+
+  const handlePlaylistCreated = (newPlaylist) => {
+    setIsCreatePlaylistModalOpen(false);
+    // After creating, user might want to add the song to this new playlist
+    // So, we can reopen the AddToPlaylistModal. It will re-fetch playlists.
+    if (isAuthenticated) { // Check again just in case
+        setIsAddToPlaylistModalOpen(true);
+    }
   };
 
   const placeholderImage = (
@@ -42,11 +60,10 @@ const SongCard = ({ song, onPlay }) => {
   );
 
   return (
-    <> {/* Fragment to wrap card and its modal */}
+    <>
       <div className="bg-slate-800 p-4 rounded-lg shadow-lg text-slate-100 hover:bg-slate-700 transition-colors duration-200 group flex flex-col justify-between">
-        {/* Top part with image and text */}
         <div>
-          <div className="relative mb-3"> {/* Added relative for button positioning if needed */}
+          <div className="relative mb-3">
             <div className="aspect-square w-full overflow-hidden rounded-md">
               {song.coverArtPath ? (
                 <img
@@ -59,7 +76,7 @@ const SongCard = ({ song, onPlay }) => {
               )}
             </div>
             <button
-              onClick={handlePlayClick}
+              onClick={handlePlayAttempt} // Use new attempt handler
               className="absolute bottom-2 right-2 bg-green-500 text-white p-3 rounded-full shadow-xl transform transition-all duration-300 ease-in-out opacity-0 group-hover:opacity-100 group-hover:scale-110 focus:outline-none hover:bg-green-600"
               title={isCurrentlyPlayingThisSong ? "Pause" : "Play"}
             >
@@ -73,33 +90,41 @@ const SongCard = ({ song, onPlay }) => {
           )}
         </div>
 
-        {/* Bottom part with action icons */}
         <div className="mt-3 pt-2 border-t border-slate-700 flex justify-end items-center space-x-3">
-          {isAuthenticated && ( // Only show "Add to Playlist" if user is logged in
-            <button
-              onClick={handleOpenAddToPlaylistModal} // Call handler to open modal
-              title="Add to playlist"
-              className="text-slate-400 hover:text-indigo-400 transition-colors"
-            >
-              <FiPlusSquare size={18}/>
-            </button>
-          )}
-          {/* <button title="More options" className="text-slate-400 hover:text-indigo-400 transition-colors">
-            <FiMoreHorizontal size={18}/>
-          </button> */}
+          <button
+            onClick={handleOpenAddToPlaylistModalAttempt} // Use new attempt handler
+            title="Add to playlist"
+            className="text-slate-400 hover:text-indigo-400 transition-colors"
+          >
+            <FiPlusSquare size={18}/>
+          </button>
         </div>
       </div>
 
-      {/* Conditionally render the AddToPlaylistModal */}
-      {/* It's important that `songToAdd` is valid when the modal is open */}
-      {isAddToPlaylistModalOpen && song && (
+      {/* Regular Modals (only render if authenticated and their specific open state is true) */}
+      {isAuthenticated && isAddToPlaylistModalOpen && song && (
         <AddToPlaylistModal
           isOpen={isAddToPlaylistModalOpen}
           onClose={() => setIsAddToPlaylistModalOpen(false)}
-          songToAdd={song} // Pass the current song object to the modal
+          songToAdd={song}
           onSongAdded={handleSongAddedToPlaylist}
+          onOpenCreatePlaylist={openCreatePlaylistModalFromSongCard}
         />
       )}
+      {isAuthenticated && isCreatePlaylistModalOpen && (
+        <CreatePlaylistModal
+          isOpen={isCreatePlaylistModalOpen}
+          onClose={() => setIsCreatePlaylistModalOpen(false)}
+          onPlaylistCreated={handlePlaylistCreated}
+        />
+      )}
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        message="Log in or sign up to play music and manage your playlists."
+      />
     </>
   );
 };

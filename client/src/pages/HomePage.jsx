@@ -1,10 +1,16 @@
 // client/src/pages/HomePage.jsx
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { getAllSongs } from '../services/songService';
-import SongCard from '../components/song/SongCard';
+import SongListItem from '../components/song/SongListItem';
 import Spinner from '../components/ui/Spinner';
 import Alert from '../components/ui/Alert';
 import { PlayerContext } from '../context/PlayerContext';
+import AuthPromptModal from '../components/ui/AuthPromptModal';
+import AddToPlaylistModal from '../components/playlist/AddToPlaylistModal';
+import CreatePlaylistModal from '../components/playlist/CreatePlaylistModal';
+import { AuthContext } from '../context/AuthContext';
+import SkeletonSongListItem from '../components/song/SkeletonSongListItem';
+import Pagination from '../components/ui/Pagination';
 
 const HomePage = () => {
   const [songs, setSongs] = useState([]);
@@ -13,15 +19,26 @@ const HomePage = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // We only need setQueue from PlayerContext here, as it handles playing the song.
-  const { setQueue } = useContext(PlayerContext);
+  const { setQueue, currentSong, isPlaying } = useContext(PlayerContext);
+  const { isAuthenticated } = useContext(AuthContext);
+  const [selectedSongForPlaylist, setSelectedSongForPlaylist] = useState(null);
+  const [isCreatePlaylistModalOpen, setIsCreatePlaylistModalOpen] = useState(false);
+  const [isAuthModalOpenForHomepage, setIsAuthModalOpenForHomepage] = useState(false);
+
+  // Theme colors (can be moved to a config or used directly)
+  const themeColors = {
+    primary: '#3949ac',
+    secondary: '#5d6cc0',
+    lightAccent: '#a0a8da',
+    lightest: '#c4c9e9',
+  };
 
   useEffect(() => {
     const fetchSongs = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getAllSongs(page, 12); // Fetch 12 songs per page
+        const data = await getAllSongs(page, 10);
         if (data.success) {
           setSongs(data.songs);
           setTotalPages(data.pages);
@@ -37,50 +54,132 @@ const HomePage = () => {
     fetchSongs();
   }, [page]);
 
-  const handlePlayListedSong = (songToPlay, allListedSongs) => {
-    // Find the index of the song to play within the current list
+  const handlePlaySongFromHome = useCallback((songToPlay, allListedSongs) => {
     const startIndex = allListedSongs.findIndex(s => s._id === songToPlay._id);
-    // Set the queue with all listed songs and start playing from the selected song
-    setQueue(allListedSongs, startIndex >= 0 ? startIndex : 0, true); // playOnSet is true by default in context
+    setQueue(allListedSongs, startIndex >= 0 ? startIndex : 0, true);
+  }, [setQueue]);
+
+  const handleOpenAddToPlaylistModal = useCallback((song) => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpenForHomepage(true);
+      setSelectedSongForPlaylist(song);
+      return;
+    }
+    setSelectedSongForPlaylist(song);
+  }, [isAuthenticated, setSelectedSongForPlaylist]);
+
+  const handleSongAddedToPlaylist = (playlistId, addedSong) => {
+    // You might want to show a success toast here using a toast library
   };
 
-  if (loading && songs.length === 0) return <div className="flex justify-center items-center h-64"><Spinner /></div>;
-  if (error) return <div className="mt-6"><Alert message={error} type="error" /></div>;
+  const openCreatePlaylistModalFromHome = () => {
+    setIsAuthModalOpenForHomepage(false);
+    setSelectedSongForPlaylist(null);
+    setIsCreatePlaylistModalOpen(true);
+  };
+
+  const handlePlaylistCreatedFromHome = () => {
+    setIsCreatePlaylistModalOpen(false);
+    // Optionally, if a song was selected to be added, you could re-open AddToPlaylistModal
+    // if (selectedSongForPlaylist) {
+    //   handleOpenAddToPlaylistModal(selectedSongForPlaylist);
+    // }
+  };
+
+  if (loading && songs.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold text-gray-800 mb-8">Discover Music</h1>
+        <div className="bg-white shadow-xl rounded-lg p-2 md:p-4 space-y-1">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <SkeletonSongListItem key={index} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (error) return (
+    <div className="container mx-auto px-4 py-8">
+        <Alert message={error} type="error" />
+    </div>
+  );
 
   return (
-    <div>
-      <h1 className="text-4xl font-bold text-gray-800 mb-8">Discover Music</h1>
-      {songs.length === 0 && !loading && (
-        <p className="text-gray-600 text-center">No songs found. Be the first to upload!</p>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {songs.map((song) => (
-          <SongCard key={song._id} song={song} onPlay={() => handlePlayListedSong(song, songs)} />
-        ))}
+    <>
+      {/* Main content area with padding */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center sm:text-left mb-10">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-800">
+            Discover <span style={{ color: themeColors.primary }}>Music</span>
+          </h1>
+          <p className="mt-2 text-lg text-gray-500">
+            Explore the latest tracks and popular hits.
+          </p>
+        </div>
+
+        {songs.length === 0 && !loading && (
+          <div className="text-center py-10">
+            <p className="text-xl text-gray-500 mb-4">No songs found yet.</p>
+            {/* You can add a link to upload page if user is artist/admin */}
+            <p className="text-gray-400">Be the first to <Link to="/upload-song" className="hover:underline" style={{color: themeColors.secondary}}>upload a song</Link>!</p>
+          </div>
+        )}
+
+        {songs.length > 0 && (
+          <div className="bg-white shadow-2xl rounded-xl p-3 md:p-6 space-y-1 px-2 sm:px-4">
+            {songs.map((song) => (
+              <SongListItem
+                key={song._id}
+                song={song}
+                onPlay={() => handlePlaySongFromHome(song, songs)}
+                onAddToPlaylist={() => handleOpenAddToPlaylistModal(song)}
+                isPlayingThisSong={currentSong?._id === song._id && isPlaying}
+              />
+            ))}
+          </div>
+        )}
+
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+        {/* Spinner for loading more pages, shown below content */}
+        {loading && songs.length > 0 && (
+          <div className="mt-8 flex justify-center">
+            <Spinner spinnerColor={themeColors.primary} /> {/* Pass color to spinner if it supports it */}
+          </div>
+        )}
       </div>
 
-      {/* Basic Pagination (can be improved) */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex justify-center items-center space-x-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1 || loading}
-            className="px-4 py-2 bg-indigo-500 text-white rounded disabled:opacity-50 hover:bg-indigo-600"
-          >
-            Previous
-          </button>
-          <span className="text-gray-700">Page {page} of {totalPages}</span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages || loading}
-            className="px-4 py-2 bg-indigo-500 text-white rounded disabled:opacity-50 hover:bg-indigo-600"
-          >
-            Next
-          </button>
-        </div>
+      {/* Modals remain at the top level of the returned JSX for proper stacking */}
+      <AuthPromptModal
+        isOpen={isAuthModalOpenForHomepage}
+        onClose={() => {
+          setIsAuthModalOpenForHomepage(false);
+          setSelectedSongForPlaylist(null);
+        }}
+        message="Please log in or register to manage playlists."
+        // You can also theme the AuthPromptModal's buttons using themeColors
+      />
+
+      {selectedSongForPlaylist && isAuthenticated && !isAuthModalOpenForHomepage && (
+        <AddToPlaylistModal
+          isOpen={!!selectedSongForPlaylist}
+          onClose={() => setSelectedSongForPlaylist(null)}
+          songToAdd={selectedSongForPlaylist}
+          onSongAdded={handleSongAddedToPlaylist}
+          onOpenCreatePlaylist={openCreatePlaylistModalFromHome}
+          // Theme this modal too
+        />
       )}
-       {loading && songs.length > 0 && <div className="mt-4 flex justify-center"><Spinner /></div>}
-    </div>
+
+      {isCreatePlaylistModalOpen && (
+        <CreatePlaylistModal
+          isOpen={isCreatePlaylistModalOpen}
+          onClose={() => setIsCreatePlaylistModalOpen(false)}
+          onPlaylistCreated={handlePlaylistCreatedFromHome}
+          // Theme this modal too
+        />
+      )}
+    </>
   );
 };
 

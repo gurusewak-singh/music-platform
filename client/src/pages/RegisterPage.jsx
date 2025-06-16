@@ -19,6 +19,25 @@ const RegisterPage = () => {
   const { username, email, password, confirmPassword } = formData;
   const [passwordError, setPasswordError] = useState('');
 
+  // Theme colors
+  const theme = {
+    primary: '#3949ac',
+    secondary: '#5d6cc0',
+    accent: '#7b88cc',
+    buttonText: '#ffffff',
+    link: '#5d6cc0',
+    linkHover: '#3949ac',
+    inputFocusBorder: '#3949ac',
+    inputFocusRing: '#7b88cc',
+  };
+
+  // Helper for input classes
+  const inputClasses = `
+    mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400
+    focus:outline-none
+    focus:border-[${theme.inputFocusBorder}]
+    focus:ring-1 focus:ring-[${theme.inputFocusRing}]
+  `;
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -48,8 +67,8 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-8">
+      <div className="max-w-md w-full bg-white p-6 sm:p-8 rounded-xl shadow-2xl mx-4">
         <h2 className="text-3xl font-bold text-center text-gray-900">
           Create Your Account
         </h2>
@@ -66,7 +85,8 @@ const RegisterPage = () => {
             </label>
             <input
               id="username" name="username" type="text" required value={username} onChange={onChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClasses}
+              disabled={isLoading}
             />
           </div>
           <div>
@@ -78,7 +98,8 @@ const RegisterPage = () => {
             </label>
             <input
               id="email" name="email" type="email" autoComplete="email" required value={email} onChange={onChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClasses}
+              disabled={isLoading}
             />
           </div>
           <div>
@@ -90,7 +111,8 @@ const RegisterPage = () => {
             </label>
             <input
               id="password" name="password" type="password" required value={password} onChange={onChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClasses}
+              disabled={isLoading}
             />
           </div>
           <div>
@@ -102,32 +124,54 @@ const RegisterPage = () => {
             </label>
             <input
               id="confirmPassword" name="confirmPassword" type="password" required value={confirmPassword} onChange={onChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClasses}
+              disabled={isLoading}
             />
           </div>
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              style={{
+                backgroundColor: isLoading ? theme.accent : theme.primary,
+                color: theme.buttonText,
+                borderColor: isLoading ? theme.accent : theme.primary,
+                '--tw-ring-color': theme.accent,
+              }}
+              onMouseOver={e => { if (!isLoading) e.currentTarget.style.backgroundColor = theme.secondary; }}
+              onMouseOut={e => { if (!isLoading) e.currentTarget.style.backgroundColor = theme.primary; }}
             >
-              Sign up
-              {/* {isLoading ? <Spinner /> : 'Sign up'} */}
+              {isLoading ? 'Processing...' : 'Sign up'}
             </button>
           </div>
         </form>
-        <p className="text-sm text-center text-gray-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Sign in
-          </Link>
-        </p>
-         <p className="text-sm text-center text-gray-600">
-          Are you an Artist?{' '}
-          <Link to="/register-artist" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Join here
-          </Link>
-        </p>
+        <div className="text-sm text-center space-y-2 mt-6">
+          <p className="text-gray-600">
+            Already have an account?{' '}
+            <Link
+              to="/login"
+              className="font-medium transition-colors"
+              style={{ color: theme.link }}
+              onMouseOver={e => e.currentTarget.style.color = theme.linkHover}
+              onMouseOut={e => e.currentTarget.style.color = theme.link}
+            >
+              Sign in
+            </Link>
+          </p>
+          <p className="text-gray-600">
+            Are you an Artist?{' '}
+            <Link
+              to="/register-artist"
+              className="font-medium transition-colors"
+              style={{ color: theme.link }}
+              onMouseOver={e => e.currentTarget.style.color = theme.linkHover}
+              onMouseOut={e => e.currentTarget.style.color = theme.link}
+            >
+              Join here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

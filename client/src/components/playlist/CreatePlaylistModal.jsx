@@ -3,6 +3,7 @@ import React, { useState, useContext } from 'react';
 import { createPlaylist } from '../../services/playlistService';
 import { AuthContext } from '../../context/AuthContext';
 import Alert from '../ui/Alert';
+import { notifySuccess, notifyError } from '../../utils/notifications';
 
 const CreatePlaylistModal = ({ isOpen, onClose, onPlaylistCreated }) => {
   const { isLoading: isAuthLoading } = useContext(AuthContext);
@@ -25,16 +26,17 @@ const CreatePlaylistModal = ({ isOpen, onClose, onPlaylistCreated }) => {
     try {
       const newPlaylistData = await createPlaylist({ name, description, isPublic });
       if (newPlaylistData.success) {
+        notifySuccess(`${newPlaylistData.playlist.name} Playlist created!`);
         onPlaylistCreated(newPlaylistData.playlist); // Callback to parent
         setName('');
         setDescription('');
         setIsPublic(true);
         onClose(); // Close modal
       } else {
-        setError(newPlaylistData.message || 'Failed to create playlist.');
+        notifyError(newPlaylistData.message || 'Failed to create playlist.');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred.');
+      notifyError(err.message || 'An error occurred.');
     } finally {
       setIsSubmitting(false);
     }
@@ -44,7 +46,7 @@ const CreatePlaylistModal = ({ isOpen, onClose, onPlaylistCreated }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all">
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md transform transition-all overflow-y-auto max-h-[80vh]">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-semibold text-gray-800">Create New Playlist</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">×</button>

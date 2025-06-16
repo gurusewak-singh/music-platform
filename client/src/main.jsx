@@ -5,14 +5,15 @@ import './index.css';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { PlayerProvider } from './context/PlayerContext'; // Import PlayerProvider
+import 'react-toastify/dist/ReactToastify.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <AuthProvider>
-      <PlayerProvider> {/* Wrap with PlayerProvider */}
+    <PlayerProvider>
+      <AuthProvider>
         <App />
-      </PlayerProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </PlayerProvider>
   </React.StrictMode>
 );

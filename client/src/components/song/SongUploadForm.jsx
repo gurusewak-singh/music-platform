@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../services/api'; // Or import specific upload service if created
 import { AuthContext } from '../../context/AuthContext'; // To disable form if global loading
 import Alert from '../ui/Alert';
+import { notifySuccess, notifyError } from '../../utils/notifications';
+
 // GlobalSpinner will handle loading state via AuthContext or a dedicated UploadContext if complex
 
 const SongUploadForm = () => {
@@ -19,7 +21,6 @@ const SongUploadForm = () => {
   const [audioFile, setAudioFile] = useState(null);
   const [coverArtFile, setCoverArtFile] = useState(null);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [isUploading, setIsUploading] = useState(false); // Local uploading state for this form
 
   const { title, artist, album, genre } = formData;
@@ -45,7 +46,6 @@ const SongUploadForm = () => {
 
     setIsUploading(true);
     setError(null);
-    setSuccess(null);
 
     const uploadData = new FormData();
     uploadData.append('title', title);
@@ -66,7 +66,7 @@ const SongUploadForm = () => {
       });
 
       if (response.data.success) {
-        setSuccess('Song uploaded successfully! Redirecting...');
+        notifySuccess('Song uploaded successfully! Redirecting...');
         setFormData({ title: '', artist: '', album: '', genre: '' });
         setAudioFile(null);
         setCoverArtFile(null);
@@ -76,10 +76,10 @@ const SongUploadForm = () => {
           navigate('/'); // Or to the artist's dashboard, or the new song page
         }, 2000);
       } else {
-        setError(response.data.message || 'Upload failed. Please try again.');
+        notifyError(response.data.message || 'Upload failed. Please try again.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'An error occurred during upload.');
+      notifyError(err.response?.data?.message || err.message || 'An error occurred during upload.');
     } finally {
       setIsUploading(false);
     }
@@ -91,7 +91,7 @@ const SongUploadForm = () => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && <Alert message={error} type="error" onClose={() => setError(null)} />}
-      {success && <Alert message={success} type="success" />}
+      {/* Success Alert removed, toast is enough */}
 
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">Song Title <span className="text-red-500">*</span></label>

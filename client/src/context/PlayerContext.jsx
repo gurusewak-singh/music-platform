@@ -1,20 +1,18 @@
 // client/src/context/PlayerContext.js
-import React, { createContext, useReducer, useRef, useEffect } from 'react';
+import React, { createContext, useReducer, useRef, useEffect, useContext } from 'react';
 
-// Initial State
-const initialState = {
-  currentSong: null,    // The song object currently loaded or playing
+// Initial State (make sure audioRef is not part of serializable state if you reset to initialState)
+const initialPlayerState = {
+  currentSong: null,
   isPlaying: false,
   currentTime: 0,
   duration: 0,
-  volume: 0.75,          // Default volume (0 to 1)
+  volume: 0.75,
   isMuted: false,
-  queue: [],            // Array of song objects for the playback queue
-  currentQueueIndex: -1, // Index of the current song in the queue
-  // Repeat modes: 'none', 'one', 'all'
+  queue: [],
+  currentQueueIndex: -1,
   repeatMode: 'none',
   isShuffling: false,
-  // originalQueue: [], // To store queue before shuffling, for un-shuffling (more advanced)
 };
 
 // Action Types
@@ -140,14 +138,15 @@ const playerReducer = (state, action) => {
       // and find the new index of currentSong.
       return { ...state, isShuffling: !state.isShuffling };
     case CLEAR_QUEUE:
+      // Explicitly pause and clear src of the HTML audio element
+      if (state.audioRef && state.audioRef.current) {
+        state.audioRef.current.pause();
+        state.audioRef.current.removeAttribute('src');
+        state.audioRef.current.load();
+      }
       return {
-        ...state,
-        currentSong: null,
-        isPlaying: false,
-        queue: [],
-        currentQueueIndex: -1,
-        currentTime: 0,
-        duration: 0,
+        ...initialPlayerState,
+        audioRef: state.audioRef, // Preserve the audioRef
       };
     default:
       return state;
@@ -155,24 +154,50 @@ const playerReducer = (state, action) => {
 };
 
 // Create Context
-export const PlayerContext = createContext(initialState);
+export const PlayerContext = createContext({
+  ...initialPlayerState,
+  audioRef: { current: null },
+  playSong: () => {},
+  pause: () => {},
+  resume: () => {},
+  seekTime: () => {},
+  setVolume: () => {},
+  toggleMute: () => {},
+  nextSong: () => {},
+  prevSong: () => {},
+  setQueue: () => {},
+  addToQueue: () => {},
+  clearQueue: () => {},
+  setRepeatMode: () => {},
+  toggleShuffle: () => {},
+});
+
+export const usePlayer = () => useContext(PlayerContext);
 
 // Provider Component
 export const PlayerProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(playerReducer, initialState);
-  const audioRef = useRef(null); // Ref for the <audio> element
+  const audioRef = useRef(null);
+  const [state, dispatch] = useReducer(playerReducer, { ...initialPlayerState, audioRef });
 
   // --- Audio Element Event Handlers ---
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleTimeUpdate = () => dispatch({ type: SET_CURRENT_TIME, payload: audio.currentTime });
-    const handleDurationChange = () => dispatch({ type: SET_DURATION, payload: audio.duration });
-    const handleLoadedMetadata = () => dispatch({ type: SET_DURATION, payload: audio.duration }); // Sometimes durationchange doesn't fire reliably
-    const handleEnded = () => dispatch({ type: SONG_ENDED });
-    const handlePlay = () => { if (!state.isPlaying) dispatch({type: RESUME_SONG}); }; // Sync state if played externally
-    const handlePause = () => { if (state.isPlaying) dispatch({type: PAUSE_SONG}); }; // Sync state if paused externally
+    const handleTimeUpdate = () => dispatch({ type: 'SET_CURRENT_TIME', payload: audio.currentTime });
+    const handleDurationChange = () => dispatch({ type: 'SET_DURATION', payload: audio.duration });
+    const handleLoadedMetadata = () => {
+      if (audio.duration && audio.duration !== Infinity) {
+        dispatch({ type: 'SET_DURATION', payload: audio.duration });
+      }
+    };
+    const handleEnded = () => dispatch({ type: 'SONG_ENDED' });
+    const handlePlay = () => { if (!state.isPlaying) dispatch({type: 'RESUME_SONG'}); };
+    const handlePause = () => { if (state.isPlaying) dispatch({type: 'PAUSE_SONG'}); };
+    const handleError = (e) => {
+      console.error("Audio Error:", e);
+      dispatch({ type: CLEAR_QUEUE });
+    };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('durationchange', handleDurationChange);
@@ -180,6 +205,7 @@ export const PlayerProvider = ({ children }) => {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -188,16 +214,27 @@ export const PlayerProvider = ({ children }) => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('error', handleError);
     };
-  }, [state.isPlaying]); // Re-attach if isPlaying changes to handle external play/pause state sync
+  }, [state.isPlaying]);
 
   // --- Effects to control <audio> element based on state ---
   useEffect(() => {
-    if (audioRef.current && state.currentSong) {
+    if (audioRef.current && state.currentSong && state.currentSong.filePath) {
+      if (audioRef.current.src !== state.currentSong.filePath) {
+        audioRef.current.src = state.currentSong.filePath;
+        audioRef.current.load();
+      }
       if (state.isPlaying) {
-        audioRef.current.play().catch(error => console.warn("Audio play failed:", error)); // Autoplay might be blocked
+        audioRef.current.play().catch(error => console.warn("Audio play failed:", error));
       } else {
         audioRef.current.pause();
+      }
+    } else if (audioRef.current && !state.currentSong) {
+      audioRef.current.pause();
+      if (audioRef.current.src) {
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
       }
     }
   }, [state.isPlaying, state.currentSong]);
@@ -209,29 +246,27 @@ export const PlayerProvider = ({ children }) => {
   }, [state.volume, state.isMuted]);
 
   // --- Player Actions (dispatchers) ---
-  const playSong = (song, queue) => dispatch({ type: PLAY_SONG, payload: { song, queue } });
-  const pause = () => dispatch({ type: PAUSE_SONG });
-  const resume = () => dispatch({ type: RESUME_SONG });
+  const playSong = (song, queue) => dispatch({ type: 'PLAY_SONG', payload: { song, queue } });
+  const pause = () => dispatch({ type: 'PAUSE_SONG' });
+  const resume = () => dispatch({ type: 'RESUME_SONG' });
   const seekTime = (time) => {
     if (audioRef.current) audioRef.current.currentTime = time;
-    dispatch({ type: SET_CURRENT_TIME, payload: time }); // Optimistically update
+    dispatch({ type: 'SET_CURRENT_TIME', payload: time });
   };
-  const setVolume = (volume) => dispatch({ type: SET_VOLUME, payload: volume });
-  const toggleMute = () => dispatch({ type: TOGGLE_MUTE });
-  const nextSong = () => dispatch({ type: NEXT_SONG });
-  const prevSong = () => dispatch({ type: PREV_SONG });
-  const setQueue = (songs, startIndex = 0, playOnSet = true) => dispatch({ type: SET_QUEUE, payload: { songs, startIndex, playOnSet } });
-  const addToQueue = (song) => dispatch({ type: ADD_TO_QUEUE, payload: song });
+  const setVolume = (volume) => dispatch({ type: 'SET_VOLUME', payload: volume });
+  const toggleMute = () => dispatch({ type: 'TOGGLE_MUTE' });
+  const nextSong = () => dispatch({ type: 'NEXT_SONG' });
+  const prevSong = () => dispatch({ type: 'PREV_SONG' });
+  const setQueueAction = (songs, startIndex = 0, playOnSet = true) => dispatch({ type: 'SET_QUEUE', payload: { songs, startIndex, playOnSet } });
+  const addToQueue = (song) => dispatch({ type: 'ADD_TO_QUEUE', payload: song });
   const clearQueue = () => dispatch({type: CLEAR_QUEUE});
-  const setRepeatMode = (mode) => dispatch({ type: SET_REPEAT_MODE, payload: mode });
-  const toggleShuffle = () => dispatch({ type: TOGGLE_SHUFFLE });
-
+  const setRepeatMode = (mode) => dispatch({ type: 'SET_REPEAT_MODE', payload: mode });
+  const toggleShuffle = () => dispatch({ type: 'TOGGLE_SHUFFLE' });
 
   return (
     <PlayerContext.Provider
       value={{
         ...state,
-        audioRef, // Expose audioRef for direct manipulation if needed (e.g., visualizers)
         playSong,
         pause,
         resume,
@@ -240,15 +275,15 @@ export const PlayerProvider = ({ children }) => {
         toggleMute,
         nextSong,
         prevSong,
-        setQueue,
+        setQueue: setQueueAction,
         addToQueue,
         clearQueue,
         setRepeatMode,
         toggleShuffle
       }}
     >
-      {/* The actual HTML audio element, hidden but controlled by the context */}
-      <audio ref={audioRef} src={state.currentSong ? state.currentSong.filePath : ''} />
+      {/* The actual HTML audio element */}
+      <audio ref={audioRef} />
       {children}
     </PlayerContext.Provider>
   );
