@@ -11,24 +11,24 @@ const playlistSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
-    owner: { // The user who created and owns the playlist
+    owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    songs: [ // Array of song IDs
+    songs: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Song',
         },
     ],
-    coverImage: { // Optional: URL from Cloudinary or a default
+    coverImage: {
         type: String,
     },
-    cloudinaryCoverImagePublicId: { // Public ID for Cloudinary cover image asset
+    cloudinaryCoverImagePublicId: {
         type: String,
     },
-    isPublic: { // Whether the playlist is visible to others (future feature, good to have)
+    isPublic: {
         type: Boolean,
         default: true,
     },
@@ -37,5 +37,11 @@ const playlistSchema = new mongoose.Schema({
         default: Date.now,
     },
 });
-playlistSchema.index({ name: 'text' });
+
+// Index for regex-based search on playlist name
+playlistSchema.index({ name: 1 });
+
+// Optional: Text index if used
+// playlistSchema.index({ name: 'text' });
+
 module.exports = mongoose.model('Playlist', playlistSchema);

@@ -6,6 +6,7 @@ const crypto = newFunction(); // For hashing file content
 const musicMetadata = require('music-metadata'); // For audio duration
 const path = require('path');
 const fs = require('fs'); // For temporary file saving/reading if needed
+const mongoose = require('mongoose'); // Add this if not present at the top
 
 // Helper function to upload to Cloudinary
 const uploadToCloudinary = (filePath, resourceType = 'auto', folder = 'songs') => {
@@ -155,16 +156,33 @@ exports.getAllSongs = async (req, res) => {
     const pageSize = parseInt(req.query.pageSize) || 10;
     const page = parseInt(req.query.page) || 1;
     const searchTerm = req.query.search || '';
+    let query = {};
+
+    if (searchTerm.trim()) {
+        const escapedSearchTerm = searchTerm.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedSearchTerm, 'i'); // 'i' for case-insensitive
+
+        // Search for the term within any of the specified fields
+        query = {
+            $or: [
+                { title: regex },
+                { artist: regex },
+                { album: regex },
+                { genre: regex }
+            ]
+        };
+        // Note: For "all words must match partially", the logic would be more complex,
+        // involving splitting searchTerm into words and creating an $and query with $or for each term.
+        // For example: if search is "dead brain", it would look for "dead" AND "brain" across fields.
+        // The current simpler regex looks for the *entire phrase* "dead brain" (case-insensitive) within fields.
+        // Or if search is "brai", it looks for "brai" (case-insensitive) within fields.
+    }
 
     try {
-        const query = searchTerm
-            ? { $text: { $search: searchTerm } } // Requires text index on title, artist
-            : {};
-
         const count = await Song.countDocuments(query);
         const songs = await Song.find(query)
-            .populate('uploadedBy', 'username artistName') // Populate uploader info
-            .sort({ createdAt: -1 }) // Sort by newest first
+            .populate('uploadedBy', 'username artistName')
+            .sort({ createdAt: -1 }) // Or by relevance if using $text search properly configured
             .limit(pageSize)
             .skip(pageSize * (page - 1));
 
@@ -306,6 +324,41 @@ exports.updateSongDetails = async (req, res) => {
     } catch (error) {
         console.error('Update Song Error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Get all songs by a specific artist
+// @route   GET /api/songs/artist/:artistId
+// @access  Public
+exports.getSongsByArtist = async (req, res) => {
+    const pageSize = parseInt(req.query.pageSize) || 10; // Default to 10, adjust as needed
+    const page = parseInt(req.query.page) || 1;
+    const { artistId } = req.params; // This artistId should be the User._id
+
+    if (!mongoose.Types.ObjectId.isValid(artistId)) { // Validate if artistId is a valid ObjectId
+        return res.status(400).json({ success: false, message: 'Invalid Artist ID format' });
+    }
+
+    try {
+        const query = { uploadedBy: artistId };
+
+        const count = await Song.countDocuments(query);
+        const songs = await Song.find(query)
+            .populate('uploadedBy', 'username artistName')
+            .sort({ createdAt: -1 })
+            .limit(pageSize)
+            .skip(pageSize * (page - 1));
+
+        res.status(200).json({
+            success: true,
+            songs,
+            page,
+            pages: Math.ceil(count / pageSize),
+            count
+        });
+    } catch (error) {
+        console.error(`Error fetching songs for artist ${artistId}:`, error);
+        res.status(500).json({ success: false, message: 'Server error while fetching artist songs' });
     }
 };
 

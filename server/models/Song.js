@@ -7,7 +7,7 @@ const songSchema = new mongoose.Schema({
         required: [true, 'Please add a song title'],
         trim: true,
     },
-    artist: { // This is the display artist name, could be from User.artistName or provided
+    artist: {
         type: String,
         required: [true, 'Please add an artist name'],
         trim: true,
@@ -23,18 +23,18 @@ const songSchema = new mongoose.Schema({
     duration: { // in seconds
         type: Number,
     },
-    filePath: { // URL from Cloudinary for the audio file
+    filePath: {
         type: String,
         required: true,
     },
-    cloudinaryAudioPublicId: { // Public ID for Cloudinary audio asset
+    cloudinaryAudioPublicId: {
         type: String,
         required: true,
     },
-    coverArtPath: { // URL from Cloudinary for the cover art
+    coverArtPath: {
         type: String,
     },
-    cloudinaryCoverArtPublicId: { // Public ID for Cloudinary cover art asset
+    cloudinaryCoverArtPublicId: {
         type: String,
     },
     uploadedBy: {
@@ -42,11 +42,9 @@ const songSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
-    fileHash: { // MD5 or SHA256 of the audio file content
+    fileHash: {
         type: String,
-        // unique: true, // Can cause issues if hash generation fails or is optional
-        // sparse: true, // Good if unique is true and hash can be null
-        index: true, // Index for faster lookups
+        index: true,
     },
     plays: {
         type: Number,
@@ -58,7 +56,14 @@ const songSchema = new mongoose.Schema({
     },
 });
 
-// Optional: Index for searching by title and artist
-songSchema.index({ title: 'text', artist: 'text', genre: 'text', album: 'text' });
+// Indexes for regex-based search (important for performance)
+songSchema.index({ title: 1 });
+songSchema.index({ artist: 1 });
+songSchema.index({ album: 1 });
+songSchema.index({ genre: 1 });
+
+// Optional: Keep $text index if you plan to use it for different types of full-text search.
+// If you primarily use regex for search, the individual field indexes above are more critical.
+// songSchema.index({ title: 'text', artist: 'text', genre: 'text', album: 'text' });
 
 module.exports = mongoose.model('Song', songSchema);

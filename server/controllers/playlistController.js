@@ -2,6 +2,7 @@
 const Playlist = require('../models/Playlist');
 const Song = require('../models/Song'); // To validate song IDs
 const cloudinary = require('../config/cloudinary'); // For playlist cover image (optional)
+const mongoose = require('mongoose'); // For ObjectId validation
 
 // @desc    Create a new playlist
 // @route   POST /api/playlists
@@ -139,27 +140,39 @@ exports.addSongToPlaylist = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Playlist not found' });
         }
 
-        // Check if current user is the owner
         if (playlist.owner.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'User not authorized to modify this playlist' });
         }
 
-        // Check if song exists
-        const songExists = await Song.findById(songId);
-        if (!songExists) {
+        const songToAdd = await Song.findById(songId);
+        if (!songToAdd) {
             return res.status(404).json({ success: false, message: 'Song not found' });
         }
 
-        // Check if song is already in the playlist
-        if (playlist.songs.includes(songId)) {
+        const wasEmpty = playlist.songs.length === 0;
+
+        if (playlist.songs.some(s => s.toString() === songId.toString())) {
             return res.status(400).json({ success: false, message: 'Song already in this playlist' });
         }
 
         playlist.songs.push(songId);
+
+        if (wasEmpty && !playlist.coverImage && songToAdd.coverArtPath) {
+            playlist.coverImage = songToAdd.coverArtPath;
+            if (songToAdd.cloudinaryCoverArtPublicId) { // If you store public_id for song covers
+                playlist.cloudinaryCoverImagePublicId = songToAdd.cloudinaryCoverArtPublicId;
+            }
+        }
+
         await playlist.save();
 
-        // Populate the songs after adding
-        const updatedPlaylist = await Playlist.findById(req.params.id).populate('songs', 'title artist');
+        const updatedPlaylist = await Playlist.findById(req.params.id)
+            .populate('owner', 'username') // Keep necessary populates for the response
+            .populate({
+                path: 'songs',
+                select: 'title artist album duration filePath coverArtPath uploadedBy',
+                populate: { path: 'uploadedBy', select: 'username artistName' }
+            });
 
 
         res.status(200).json({
@@ -301,25 +314,25 @@ exports.updatePlaylistCoverImage = async (req, res) => {
 // @route   GET /api/playlists/search
 // @access  Public
 exports.searchPlaylists = async (req, res) => {
-    const searchTerm = req.query.q || ''; // Expecting query param 'q' for search term
-    const pageSize = parseInt(req.query.pageSize) || 10;
-    const page = parseInt(req.query.page) || 1;
+    const searchTerm = req.query.q || '';
+    const pageSize = parseInt(req.query.pageSize) || 8; // Default to 8 for search results list
+    const page = parseInt(req.query.page) || 1; // Allow pagination, though UI might just show first page
+    let queryOptions = { isPublic: true };
 
-    if (!searchTerm.trim()) {
-        return res.status(400).json({ success: false, message: 'Search term is required' });
+    if (searchTerm.trim()) {
+        const escapedSearchTerm = searchTerm.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedSearchTerm, 'i');
+        queryOptions.name = regex;
+    } else {
+        // If no search term, return empty results as per frontend expectation
+        return res.status(200).json({ success: true, playlists: [], page: 1, pages: 0, count: 0 });
     }
 
     try {
-        const query = {
-            isPublic: true, // Only search public playlists
-            $text: { $search: searchTerm }
-        };
-
-        const count = await Playlist.countDocuments(query);
-        const playlists = await Playlist.find(query)
-            .populate('owner', 'username') // Populate owner info
-            .populate('songs', 'title')    // Optionally populate a few song titles
-            .sort({ /* You can add sorting, e.g., by relevance or createdAt */ })
+        const count = await Playlist.countDocuments(queryOptions);
+        const playlists = await Playlist.find(queryOptions)
+            .populate('owner', 'username')
+            .sort({ /* Consider relevance or name sorting */ name: 1 })
             .limit(pageSize)
             .skip(pageSize * (page - 1));
 
@@ -330,9 +343,44 @@ exports.searchPlaylists = async (req, res) => {
             pages: Math.ceil(count / pageSize),
             count
         });
-
     } catch (error) {
         console.error('Search Playlists Error:', error);
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+};
+
+// @desc    Get all public playlists for a specific user
+// @route   GET /api/playlists/user/:userId
+// @access  Public
+exports.getPlaylistsByUserId = async (req, res) => {
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ success: false, message: 'Invalid User ID format' });
+    }
+
+    try {
+        const query = { owner: userId, isPublic: true }; // Crucially: isPublic: true
+
+        const count = await Playlist.countDocuments(query);
+        const playlists = await Playlist.find(query)
+            .populate('owner', 'username artistName') // Populate owner for display
+            .populate('songs', '_id title coverArtPath') // Populate minimal song info, e.g., for song count or first song cover
+            .sort({ createdAt: -1 })
+            .limit(pageSize)
+            .skip(pageSize * (page - 1));
+
+        res.status(200).json({
+            success: true,
+            playlists,
+            page,
+            pages: Math.ceil(count / pageSize),
+            count
+        });
+    } catch (error) {
+        console.error(`Error fetching public playlists for user ${userId}:`, error);
+        res.status(500).json({ success: false, message: 'Server error while fetching user playlists' });
     }
 };

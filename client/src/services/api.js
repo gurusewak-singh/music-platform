@@ -5,7 +5,7 @@ import { notifyError } from '../utils/notifications'; // Import notifyError
 // Create an Axios instance
 const apiClient = axios.create({
   // baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api', // Default to backend dev server
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api', // Default to backend dev server
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://music-backend-f7i5.onrender.com/api', // Default to backend dev server
   headers: {
     'Content-Type': 'application/json',
   },

@@ -9,39 +9,40 @@ const {
     addSongToPlaylist,
     removeSongFromPlaylist,
     deletePlaylist,
-    updatePlaylistCoverImage // Optional
+    updatePlaylistCoverImage,
+    getPlaylistsByUserId // Import the new controller function
 } = require('../controllers/playlistController');
 const { protect } = require('../middleware/authMiddleware');
 const { singleImageUpload } = require('../middleware/uploadMiddleware'); // For cover image
 
 const router = express.Router();
 
-router.get('/search', searchPlaylists); // GET /api/playlists/search?q=MySearchTerm
-router.get('/:id', getPlaylistById); // GET /api/playlists/:id (controller handles public/private logic)
+// --- Publicly Accessible Routes ---
+router.get('/search', searchPlaylists);
+router.get('/user/:userId', getPlaylistsByUserId); // <-- ADD THIS NEW ROUTE HERE
+// router.get('/:id', getPlaylistById); // getPlaylistById already handles public/private logic based on auth, so it can stay after protect or be moved here if purely public parts are desired without token
 
-// All playlist routes require authentication
+// All subsequent playlist routes require authentication
 router.use(protect);
 
 router.route('/')
-    .post(createPlaylist); // POST /api/playlists
+    .post(createPlaylist);
 
 router.route('/me')
-    .get(getMyPlaylists); // GET /api/playlists/me
+    .get(getMyPlaylists);
 
-router.route('/:id')
-    .get(getPlaylistById)       // GET /api/playlists/:id
-    .put(updatePlaylistDetails) // PUT /api/playlists/:id
-    .delete(deletePlaylist);    // DELETE /api/playlists/:id
+router.route('/:id') // getPlaylistById here will benefit from req.user if user is logged in (for private playlists)
+    .get(getPlaylistById)
+    .put(updatePlaylistDetails)
+    .delete(deletePlaylist);
 
 router.route('/:id/add-song')
-    .put(addSongToPlaylist);    // PUT /api/playlists/:id/add-song
+    .put(addSongToPlaylist);
 
 router.route('/:id/remove-song')
-    .put(removeSongFromPlaylist); // PUT /api/playlists/:id/remove-song
+    .put(removeSongFromPlaylist);
 
-// Optional: Route for playlist cover image
 router.route('/:id/cover')
-    .put(singleImageUpload.single('coverImage'), updatePlaylistCoverImage); // PUT /api/playlists/:id/cover
-
+    .put(singleImageUpload.single('coverImage'), updatePlaylistCoverImage);
 
 module.exports = router;

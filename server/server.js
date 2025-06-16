@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const songRoutes = require('./routes/songRoutes'); // Import song routes
 const playlistRoutes = require('./routes/playlistRoutes'); // Import playlist routes
 const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
+const userRoutes = require('./routes/userRoutes'); // Import user routes
 
 // Load env vars
 dotenv.config();
@@ -28,6 +29,7 @@ app.get('/', (req, res) => {
 
 // Mount Routers
 app.use('/api/auth', authRoutes); // Mount auth routes under /api/auth
+app.use('/api/users', userRoutes); // Mount user routes under /api/users
 app.use('/api/songs', songRoutes); // Mount song routes under /api/songs
 app.use('/api/playlists', playlistRoutes); // Mount playlist routes
 app.use('/api/admin', adminRoutes); // Mount admin routes

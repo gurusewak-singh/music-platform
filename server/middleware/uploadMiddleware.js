@@ -15,7 +15,8 @@ function checkFileType(file, cb, allowedTypesRegex) {
     }
 }
 
-const audioFiletypes = /mpeg|mp3|wav|aac|ogg/;
+// Add m4a to allowed audio types
+const audioFiletypes = /mpeg|mp3|wav|aac|ogg|m4a/;
 const imageFiletypes = /jpeg|jpg|png|gif/;
 
 const songUpload = multer({
