@@ -8,6 +8,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    visualizer({ open: true, gzipSize: true, brotliSize: true }),
+    visualizer({ open: false, gzipSize: true, brotliSize: true }),
   ],
 })
