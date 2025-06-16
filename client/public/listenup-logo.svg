@@ -1,0 +1,25 @@
+<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- Background -->
+  <rect width="500" height="500" fill="#1E1E1E" rx="60"/>
+
+  <!-- Headband arc -->
+  <path d="M150 250a100 100 0 01200 0" stroke="#3F8EF7" stroke-width="14" fill="none"/>
+
+  <!-- Left earcup -->
+  <rect x="125" y="250" width="30" height="80" rx="15" fill="#3F8EF7"/>
+  
+  <!-- Right earcup -->
+  <rect x="345" y="250" width="30" height="80" rx="15" fill="#3F8EF7"/>
+
+  <!-- Soundwave bars inside headphones -->
+  <rect x="200" y="270" width="10" height="40" rx="5" fill="white"/>
+  <rect x="215" y="250" width="10" height="80" rx="5" fill="#3F8EF7"/>
+  <rect x="230" y="285" width="10" height="30" rx="5" fill="white"/>
+  <rect x="245" y="260" width="10" height="60" rx="5" fill="#3F8EF7"/>
+  <rect x="260" y="270" width="10" height="40" rx="5" fill="white"/>
+
+  <!-- Brand Name -->
+  <text x="250" y="400" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="40" fill="white" font-weight="bold">
+    Listen<tspan fill="#3F8EF7">Up</tspan>
+  </text>
+</svg>
