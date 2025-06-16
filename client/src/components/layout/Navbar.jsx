@@ -106,7 +106,7 @@ const Navbar = () => {
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center" style={{ color: theme.logoText }}>
               <FiMusic size={24} className="mr-2" />
-              <span className="font-bold text-xl">MusicHub</span>
+              <span className="font-bold text-xl">ListenUp</span>
             </Link>
           </div>
 
